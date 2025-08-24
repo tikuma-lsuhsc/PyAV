@@ -149,3 +149,144 @@ class TestSeek(TestCase):
                 frame_count += 1
 
         assert frame_count == total_frame_count - target_frame
+
+class TestSeek2(TestCase):
+    def test_seek2_float(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        self.assertRaises(TypeError, container.seek2, 1.0)
+
+    def test_seek2_int64(self) -> None:
+        # Assert that it accepts large values.
+        # Issue 251 pointed this out.
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        container.seek2(2**32)
+
+    def test_seek2_start(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+
+        # count all the packets
+        total_packet_count = 0
+        for packet in container.demux():
+            total_packet_count += 1
+
+        # seek2 to beginning
+        container.seek2(-1)
+
+        # count packets again
+        seek2_packet_count = 0
+        for packet in container.demux():
+            seek2_packet_count += 1
+
+        assert total_packet_count == seek2_packet_count
+
+    def test_seek2_middle(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        assert container.duration is not None
+
+        # count all the packets
+        total_packet_count = 0
+        for packet in container.demux():
+            total_packet_count += 1
+
+        # seek2 to middle
+        container.seek2(container.duration // 2)
+
+        seek2_packet_count = 0
+        for packet in container.demux():
+            seek2_packet_count += 1
+
+        assert seek2_packet_count < total_packet_count
+
+    def test_seek2_end(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        assert container.duration is not None
+
+        # seek2 to middle
+        container.seek2(container.duration // 2)
+        middle_packet_count = 0
+
+        for packet in container.demux():
+            middle_packet_count += 1
+
+        # you can't really seek2 to to end but you can to the last keyframe
+        container.seek2(container.duration)
+
+        seek2_packet_count = 0
+        for packet in container.demux():
+            seek2_packet_count += 1
+
+        # there should be some packet because we're seek2ing to the last keyframe
+        assert seek2_packet_count > 0
+        assert seek2_packet_count < middle_packet_count
+
+    def test_decode_half(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        video_stream = container.streams.video[0]
+
+        total_frame_count = 0
+        for frame in container.decode(video_stream):
+            total_frame_count += 1
+
+        assert video_stream.frames == total_frame_count
+        assert video_stream.average_rate is not None
+
+        # set target frame to middle frame
+        target_frame = total_frame_count // 2
+        target_timestamp = int(
+            (target_frame * av.time_base) / video_stream.average_rate
+        )
+
+        print(target_timestamp)
+
+        # should seek2 to nearest keyframe before target_timestamp
+        container.seek2(target_timestamp,min_ts=target_timestamp//2,max_ts=target_timestamp)
+
+        current_frame = None
+        frame_count = 0
+
+        for frame in container.decode(video_stream):
+            if current_frame is None:
+                current_frame = timestamp_to_frame(frame.pts, video_stream)
+            else:
+                current_frame += 1
+
+            # start counting once we reach the target frame
+            if current_frame is not None and current_frame >= target_frame:
+                frame_count += 1
+
+        assert frame_count == total_frame_count - target_frame
+
+    def test_stream_seek2(self) -> None:
+        container = av.open(fate_suite("h264/interlaced_crop.mp4"))
+        video_stream = container.streams.video[0]
+
+        assert video_stream.time_base is not None
+        assert video_stream.start_time is not None
+        assert video_stream.average_rate is not None
+
+        total_frame_count = 0
+        for frame in container.decode(video_stream):
+            total_frame_count += 1
+
+        target_frame = total_frame_count // 2
+        time_base = float(video_stream.time_base)
+        target_sec = target_frame * 1 / float(video_stream.average_rate)
+
+        target_timestamp = int(target_sec / time_base) + video_stream.start_time
+        container.seek2(target_timestamp, stream=video_stream)
+
+        current_frame = None
+        frame_count = 0
+
+        for frame in container.decode(video_stream):
+            if current_frame is None:
+                assert frame.pts is not None
+                current_frame = timestamp_to_frame(frame.pts, video_stream)
+            else:
+                current_frame += 1
+
+            # start counting once we reach the target frame
+            if current_frame is not None and current_frame >= target_frame:
+                frame_count += 1
+
+        assert frame_count == total_frame_count - target_frame

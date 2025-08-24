@@ -46,4 +46,16 @@ class InputContainer(Container):
         unsupported_frame_offset: bool = False,
         unsupported_byte_offset: bool = False,
     ) -> None: ...
+    def seek2(
+        self,
+        offset: int,
+        *,
+        backward: bool = False,
+        any_frame: bool = False,
+        stream: Stream | VideoStream | AudioStream | None = None,
+        unsupported_frame_offset: bool = False,
+        unsupported_byte_offset: bool = False,
+        min_ts: int = lib.INT64_MIN,
+        max_ts: int = lib.INT64_MAX,
+    ) -> None: ...
     def flush_buffers(self) -> None: ...

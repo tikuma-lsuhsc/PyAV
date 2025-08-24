@@ -9,6 +9,7 @@ cdef extern from "libavformat/avformat.h" nogil:
     cdef void  avformat_network_init()
 
     cdef int64_t INT64_MIN
+    cdef int64_t INT64_MAX
 
     cdef int AV_TIME_BASE
     cdef int AVSEEK_FLAG_BACKWARD

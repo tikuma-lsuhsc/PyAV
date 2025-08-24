@@ -281,6 +281,82 @@ cdef class InputContainer(Container):
         if self.eof or lib.avio_feof(self.ptr.pb):
             self.flush_buffers()
 
+    def seek2(self, int offset, *, bint backward=False, bint any_frame=False, Stream stream=None, 
+        bint unsupported_frame_offset=False, bint unsupported_byte_offset=False, int64_t min_ts=lib.INT64_MIN, int64_t max_ts=lib.INT64_MAX):
+        """Seek to timestamp ts.
+
+        :param int offset_ts: Target timestamp to seek to, expressed in ``stream.time_base``.
+        :param Stream stream: The stream who's ``time_base`` the ``offset``, 
+                              ``min_ts``, and ``max_ts`` is in.
+        :param int min_ts: The smallest acceptable timestamp, defaults to INT64_MIN.
+        :param int max_ts: The largest acceptable timestamp, defaults to INT64_MAX.
+
+        :param bool backward: If there is not a (key)frame at the given offset,
+            look backwards for it.
+        :param bool any_frame: Seek to any frame, not just a keyframe.
+
+        :param bool unsupported_frame_offset: ``offset`` is a frame
+            index instead of a time; not supported by any known format.
+        :param bool unsupported_byte_offset: ``offset`` is a byte
+            location in the file; not supported by any known format.
+
+        Seeking will be done so that the point from which all active streams can 
+        be presented successfully will be closest to ts and within min/max_ts. 
+        Active streams are all streams that have AVStream.discard < AVDISCARD_ALL.
+
+        If flags contain AVSEEK_FLAG_BYTE, then all timestamps are in bytes and 
+        are the file position (this may not be supported by all demuxers). If 
+        flags contain AVSEEK_FLAG_FRAME, then all timestamps are in frames in 
+        the stream with stream_index (this may not be supported by all demuxers). 
+
+        Otherwise all timestamps are in units of the stream selected by stream_index 
+        or if stream_index is -1, in AV_TIME_BASE units. If flags contain AVSEEK_FLAG_ANY, 
+        then non-keyframes are treated as keyframes (this may not be supported by 
+        all demuxers).
+
+        After seeking, packets that you demux should correspond (roughly) to
+        the position you requested.
+
+        .. seealso:: :ffmpeg:`avformat_seek_file` for discussion of the flags.
+
+        """
+        self._assert_open()
+
+        # We used to take floats here and assume they were in seconds. This
+        # was super confusing, so lets go in the complete opposite direction
+        # and reject non-ints.
+        if not isinstance(offset, int):
+            raise TypeError("Container.seek only accepts integer offset.", type(offset))
+
+        cdef int64_t c_ts = offset
+        cdef int64_t c_min_ts = min_ts
+        cdef int64_t c_max_ts = max_ts
+
+        # int64_t min_ts=INT64_MIN,  int64_t max_ts=INT64_MAX
+
+        cdef int flags = 0
+        cdef int ret
+
+        if backward:
+            flags |= lib.AVSEEK_FLAG_BACKWARD
+        if any_frame:
+            flags |= lib.AVSEEK_FLAG_ANY
+
+        # If someone really wants (and to experiment), expose these.
+        if unsupported_frame_offset:
+            flags |= lib.AVSEEK_FLAG_FRAME
+        if unsupported_byte_offset:
+            flags |= lib.AVSEEK_FLAG_BYTE
+
+        cdef int stream_index = stream.index if stream else -1
+        with nogil:
+            ret = lib.avformat_seek_file(self.ptr, stream_index, c_min_ts,  c_ts, c_max_ts, flags)
+        err_check(ret)
+
+        # codec buffers must be cleared if file is at eof,
+        if self.eof or lib.avio_feof(self.ptr.pb):
+            self.flush_buffers()
+
     cdef flush_buffers(self):
         self._assert_open()
 

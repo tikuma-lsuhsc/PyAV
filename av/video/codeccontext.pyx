@@ -368,3 +368,4 @@ cdef class VideoCodecContext(CodecContext):
     @qmax.setter
     def qmax(self, value):
         self.ptr.qmax = value
+

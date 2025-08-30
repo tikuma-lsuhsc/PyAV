@@ -20,7 +20,6 @@ cdef close_input(InputContainer self):
             lib.avformat_close_input(&self.ptr)
         self.input_was_opened = False
 
-
 cdef class InputContainer(Container):
     def __cinit__(self, *args, **kwargs):
         cdef CodecContext py_codec_context
@@ -154,6 +153,8 @@ cdef class InputContainer(Container):
         cdef unsigned int i
         cdef Packet packet
         cdef int ret
+        cdef size_t size
+        cdef const void * pal
 
         self.set_timeout(self.read_timeout)
         try:
@@ -174,6 +175,11 @@ cdef class InputContainer(Container):
                     self.err_check(ret)
                 except EOFError:
                     break
+
+                pal = lib.av_packet_get_side_data(packet.ptr, lib.AV_PKT_DATA_PALETTE, &size)
+                if pal:
+                    print(f'decoding packet at dts={packet.dts} with size {size}')
+                # cpdef _scan_palettes(self, Packet packet):
 
                 if include_stream[packet.ptr.stream_index]:
                     # If AVFMTCTX_NOHEADER is set in ctx_flags, then new streams

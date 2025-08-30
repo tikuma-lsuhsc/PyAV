@@ -198,3 +198,11 @@ class Frame:
 
         if v is not None:
             self.ptr.opaque_ref = opaque_container.add(v)
+
+    @property
+    def palette(self):
+        if self.ptr.flags & lib.AVPixFmtFlags.AV_PIX_FMT_FLAG_PAL:
+            return self.ptr.data[1]
+        else:
+            return None
+        

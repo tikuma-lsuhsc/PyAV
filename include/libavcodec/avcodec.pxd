@@ -1,4 +1,4 @@
-from libc.stdint cimport int8_t, int64_t, uint16_t, uint32_t
+from libc.stdint cimport int8_t, int64_t, uint16_t, uint32_t, uint8_t
 
 cdef extern from "libavcodec/codec.h":
     struct AVCodecTag:
@@ -17,6 +17,16 @@ cdef extern from "libavcodec/packet.h" nogil:
         int free_opaque
     )
 
+    AVPacketSideData *av_packet_side_data_add(AVPacketSideData **sd, int *nb_sd,
+                                          AVPacketSideDataType type,
+                                          void *data, size_t size, int flags)
+
+    const AVPacketSideData *av_packet_side_data_get(const AVPacketSideData *sd,
+                                                int nb_sd,
+                                                AVPacketSideDataType type)
+
+    uint8_t* av_packet_get_side_data(const AVPacket *pkt, AVPacketSideDataType type,
+                                    size_t *size)
 
 cdef extern from "libavutil/channel_layout.h":
     ctypedef enum AVChannelOrder:
@@ -381,9 +391,9 @@ cdef extern from "libavcodec/avcodec.h" nogil:
         AV_PKT_DATA_NB
 
     cdef struct AVPacketSideData:
-        uint8_t *data;
-        size_t size;
-        AVPacketSideDataType type;
+        uint8_t *data
+        size_t size
+        AVPacketSideDataType type
 
     cdef enum AVFrameSideDataType:
         AV_FRAME_DATA_PANSCAN
@@ -597,3 +607,6 @@ cdef extern from "libavcodec/avcodec.h" nogil:
         AVCodecContext *codec,
         const AVCodecParameters *par
     )
+
+# cdef extern from "libavcodec/decode.h":
+#     cdef int ff_copy_palette(void *dst, const AVPacket *src, void *logctx)

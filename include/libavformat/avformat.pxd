@@ -340,3 +340,8 @@ cdef extern from "libavformat/avformat.h" nogil:
     # custom
 
     cdef set pyav_get_available_formats()
+
+# cdef extern from "libavformat/rawutils.h" nogil:
+
+#     cdef int ff_get_packet_palette(AVFormatContext *s, AVPacket *pkt, int ret, 
+#                                    uint32_t *palette)

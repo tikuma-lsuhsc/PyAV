@@ -4,6 +4,7 @@ from av.buffer cimport Buffer
 from av.bytesource cimport ByteSource
 from av.stream cimport Stream
 
+cimport numpy as np
 
 cdef class Packet(Buffer):
     cdef lib.AVPacket* ptr
@@ -13,3 +14,5 @@ cdef class Packet(Buffer):
     cdef ByteSource source
     cdef size_t _buffer_size(self)
     cdef void* _buffer_ptr(self)
+
+    cdef char[:] palette(self)

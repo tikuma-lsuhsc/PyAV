@@ -5,6 +5,9 @@ from cython.cimports.av.error import err_check
 from cython.cimports.av.opaque import opaque_container
 from cython.cimports.av.utils import avrational_to_fraction, to_avrational
 
+from cython.cimports.libc.string import memcpy
+
+import numpy as np
 
 @cython.cclass
 class Packet(Buffer):
@@ -235,3 +238,22 @@ class Packet(Buffer):
         if v is None:
             return
         self.ptr.opaque_ref = opaque_container.add(v)
+
+    @cython.cfunc
+    @cython.locals(size=cython.size_t, pal=cython.p_void)
+    @cython.returns(cython.char[:])
+    def palette(self):
+
+        pal = lib.av_packet_get_side_data(self.ptr, lib.AV_PKT_DATA_PALETTE, cython.address(size))
+
+        if pal:
+            result = np.empty(size, dtype=np.uint8)
+
+            # Use memcpy to copy the data from the C array to the NumPy array's buffer
+            memcpy(result.data, cython.cast(cython.p_char,pal), size)
+
+            return result
+        
+        # np.frombuffer(cython.cast(pal,p_char), dtype=np.uint8, count=size)
+        else:
+            return np.empty(0, dtype=np.uint8)

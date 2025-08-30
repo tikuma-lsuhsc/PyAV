@@ -37,12 +37,13 @@ with av.open(avifile) as fmt:
 
     for pkt  in iterpackets:
         print(pkt.pts,pkt.dts)
+        print(pkt.palette())
     # iterframes = fmt.decode(video=0)
     # frame = next(iterframes)
 
     # frame.data
 
-    exit()
+        exit()
     # for frame in iterframes:
     #     data = frame.to_ndarray(format="rgb24")
 

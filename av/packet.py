@@ -247,10 +247,10 @@ class Packet(Buffer):
         pal = lib.av_packet_get_side_data(self.ptr, lib.AV_PKT_DATA_PALETTE, cython.address(size))
 
         if pal:
-            result = np.empty(size, dtype=np.uint8)
+            result = np.empty(size, dtype=np.char)
 
             # Use memcpy to copy the data from the C array to the NumPy array's buffer
-            memcpy(result.data, cython.cast(cython.p_char,pal), size)
+            memcpy(cython.cast(cython.p_char,result.data), cython.cast(cython.p_char,pal), size)
 
             return result
         
